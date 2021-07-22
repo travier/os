@@ -3,7 +3,8 @@
 # and https://github.com/coreos/fedora-coreos-tracker/issues/401
 
 repos:
-  - rhel-8-nfv
+  - c9s-rt
+  - c9s-nfv
 
 extensions:
   # https://github.com/coreos/fedora-coreos-tracker/issues/326
@@ -33,6 +34,9 @@ extensions:
   # GRPA-2822
   # https://github.com/openshift/machine-config-operator/pull/1330
   # https://github.com/openshift/enhancements/blob/master/enhancements/support-for-realtime-kernel.md
+  # GRPA-3123
+  # - kata-containers (RHAOS)
+  #   - qemu-kiwi (advanced-virt)
   kernel-rt:
     architectures:
       - x86_64
@@ -44,17 +48,19 @@ extensions:
       - kernel-rt-devel
   # https://github.com/openshift/machine-config-operator/pull/2456
   # https://github.com/openshift/enhancements/blob/master/enhancements/sandboxed-containers/sandboxed-containers-tech-preview.md
-  # GRPA-3123
-  # - kata-containers (RHAOS)
-  #   - qemu-kiwi (advanced-virt)
-  sandboxed-containers:
-    architectures:
-      - x86_64
-    modules:
-      enable:
-        # for qemu-kiwi
-        - virt:av
-    repos:
-      - rhel-8-advanced-virt
-    packages:
-      - kata-containers
+  # sandboxed-containers:
+  #   architectures:
+  #     - x86_64
+  #   modules:
+  #     enable:
+  #       # for qemu-kiwi
+  #       - virt:av
+  #   repos:
+  #     - rhel-8-advanced-virt
+  #   packages:
+  #     - kata-containers
+  # sandboxed-containers:
+  #   architectures:
+  #     - x86_64
+  #   packages:
+  #     - kata-containers

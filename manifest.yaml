@@ -27,6 +27,8 @@ arch-include:
 repos:
   - baseos
   - appstream
+  # For nss-altfiles
+  - walters-coreos-centos-stuff
   # - rhel-8-fast-datapath
   # - rhel-8-fast-datapath-aarch64
   - rhel-8-server-ose
@@ -201,7 +203,7 @@ packages:
  - cri-o cri-tools
  # Networking
  - nfs-utils
- # - openvswitch2.15
+ - openvswitch
  - dnsmasq
  - NetworkManager-ovs
  # Extra runtime
