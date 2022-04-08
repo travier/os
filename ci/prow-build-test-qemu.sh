@@ -4,6 +4,12 @@ set -xeuo pipefail
 # entrypoint for PRs to this repo, as well as for PRs on other repos,
 # mainly coreos-assembler.  It assumes that `cosa init` has been run.
 
+# Default to building RHCOS unless we were explicitely called to build SCOS
+KIND="rhcos"
+if [[ "${#}" -eq 1 ]] && [[ "${1}" == "scos" ]]; then
+    KIND="scos"
+fi
+
 REDIRECTOR_URL="https://rhcos-redirector.apps.art.xq1c.p1.openshiftapps.com/art/storage/releases/"
 
 # record information about cosa + rpm-ostree
@@ -19,43 +25,66 @@ rpm-ostree --version
 # if src/config already exists instead of wanting to reference
 # it or clone it.  Or we could write our .repo files to a separate
 # place.
+# For SCOS, we currently replace the manifest.yaml symlink thus we need to
+# write to the source too
 if test '!' -w src/config; then
     git clone --recurse src/config src/config.writable
     rm src/config -rf
     mv src/config.writable src/config
 fi
 
+# Replace manifest.yaml symlink to point to SCOS
+if [[ "${KIND}" == "scos" ]]; then
+    ln -sf manifest-scos.yaml src/config/manifest.yaml
+fi
+
 # Grab the raw value of `mutate-os-release` and use sed to convert the value
 # to X-Y format
 ocpver=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]')
 ocpver_mut=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]' | sed 's|\.|-|')
-prev_build_url=${REDIRECTOR_URL}/rhcos-${ocpver}/
-# temporarily also fetch 8.5 repo for sssd
-# https://bugzilla.redhat.com/show_bug.cgi?id=2072050
+prev_build_url=${REDIRECTOR_URL}/${KIND}-${ocpver}/
+
+# Setup repository for RHCOS & SCOS until we have all package available publicly
 curl -L http://base-"${ocpver_mut}"-rhel86.ocp.svc.cluster.local > src/config/ocp.repo
-curl -L http://base-"${ocpver_mut}"-rhel85.ocp.svc.cluster.local > src/config/ocp85.repo
-sed -i -e 's,\[rhel-8-,\[rhel-85-,' src/config/ocp85.repo
+
+if [[ "${KIND}" == "rhcos" ]]; then
+    # temporarily also fetch 8.5 repo for sssd
+    # https://bugzilla.redhat.com/show_bug.cgi?id=2072050
+    curl -L http://base-"${ocpver_mut}"-rhel85.ocp.svc.cluster.local > src/config/ocp85.repo
+    sed -i -e 's,\[rhel-8-,\[rhel-85-,' src/config/ocp85.repo
+fi
+
 cosa buildfetch --url="${prev_build_url}"
 cosa fetch
 cosa build
 cosa buildextend-extensions
+
 # Manually exclude Secure Boot testing for pre-release RHEL content.
 # This will be removed once RHEL 8.6 is GA.
 # See https://github.com/openshift/os/pull/756
-# cosa kola --basic-qemu-scenarios
-cosa kola run --qemu-nvme=true basic
-cosa kola run --qemu-firmware=uefi basic
-kola run-upgrade -b rhcos -v --find-parent-image --qemu-image-dir tmp/ --output-dir tmp/kola-upgrade
+BETA="true"
+if [[ "${BETA}" == "false" ]]; then
+    cosa kola --basic-qemu-scenarios
+else
+    cosa kola run --qemu-nvme=true basic
+    cosa kola run --qemu-firmware=uefi basic
+fi
+
+kola run-upgrade -b "${KIND}" -v --find-parent-image --qemu-image-dir tmp/ --output-dir tmp/kola-upgrade
 cosa kola run --parallel 2
+
 # Build metal + installer now so we can test them
 cosa buildextend-metal && cosa buildextend-metal4k && cosa buildextend-live
+
 # compress the metal and metal4k images now so we're testing
 # installs with the image format we ship
 cosa compress --artifact=metal --artifact=metal4k
+
 # Running testiso scenarios on metal artifact
 # Skip the following scenarios: iso-install,iso-offline-install,iso-live-login,iso-as-disk
 # See: https://github.com/openshift/os/issues/666
 kola testiso -S --scenarios pxe-install,pxe-offline-install --output-dir tmp/kola-metal
+
 # iso-install scenario to sanity-check the metal4k media
 # Skip all the testiso scenarios for metal4k + UEFI
 # See: https://github.com/openshift/os/issues/666

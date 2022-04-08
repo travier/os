@@ -9,4 +9,9 @@ cosa_dir="${COSA_DIR:-$(mktemp -d)}"
 echo "Using ${cosa_dir} for build"
 cd "${cosa_dir}"
 cosa init /src
-exec ${dn}/prow-build-test-qemu.sh
+
+# Default to building RHCOS unless we were explicitely called to build SCOS
+if [[ "${#}" -eq 1 ]] && [[ "${1}" == "scos" ]]; then
+    exec "${dn}/prow-build-test-qemu.sh" scos
+fi
+exec "${dn}/prow-build-test-qemu.sh"
