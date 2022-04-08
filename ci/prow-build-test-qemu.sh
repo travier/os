@@ -35,7 +35,7 @@ prev_build_url=${REDIRECTOR_URL}/rhcos-${ocpver}/
 curl -L http://base-"${ocpver_mut}"-rhel86.ocp.svc.cluster.local > src/config/ocp.repo
 curl -L http://base-"${ocpver_mut}"-rhel85.ocp.svc.cluster.local > src/config/ocp85.repo
 sed -i -e 's,\[rhel-8-,\[rhel-85-,' src/config/ocp85.repo
-cosa buildfetch --url=${prev_build_url}
+cosa buildfetch --url="${prev_build_url}"
 cosa fetch
 cosa build
 cosa buildextend-extensions
