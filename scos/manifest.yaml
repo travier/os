@@ -1,1 +1,2 @@
-../manifest-scos.yaml
+include:
+  - ../manifest-scos.yaml
