@@ -34,9 +34,9 @@ if test '!' -w src/config; then
 fi
 
 # Replace manifest.yaml symlink to point to SCOS
-if [[ "${KIND}" == "scos" ]]; then
-    ln -sf manifest-scos.yaml src/config/manifest.yaml
-fi
+# if [[ "${KIND}" == "scos" ]]; then
+#     ln -sf manifest-scos.yaml src/config/manifest.yaml
+# fi
 
 # Grab the raw value of `mutate-os-release` and use sed to convert the value
 # to X-Y format

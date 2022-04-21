@@ -1,1 +1,1 @@
-build-test-qemu.sh
+build-test-qemu-scos.sh
