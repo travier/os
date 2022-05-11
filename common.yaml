@@ -15,6 +15,10 @@ conditional-include:
     - distro == "rhel"
     - version == "8.5"
     include: rhel-8.5.yaml
+  - if:
+    - distro == "rhel"
+    - version == "8.6"
+    include: rhel-8.6.yaml
 
 # Layers common to RHCOS & SCOS
 ostree-layers:
