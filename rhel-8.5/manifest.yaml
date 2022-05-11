@@ -8,4 +8,4 @@ variables:
   version: "8.5"
 
 include:
-  - manifest-common.yaml
+  - ../common.yaml
