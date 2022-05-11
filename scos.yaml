@@ -1,0 +1,173 @@
+# Layers specific to SCOS
+ostree-layers:
+  - overlay/05scos
+
+# CentOS Stream 9 repos + internal repos for now
+repos:
+  - baseos
+  - appstream
+  - rhel-8-server-ose
+  # - coreos-c9s
+  # - scos
+  - walters-coreos-centos-stuff
+
+# Still needed?
+#rpmdb: sqlite
+
+# We include hours/minutes to avoid version number reuse
+automatic-version-prefix: "411.91.<date:%Y%m%d%H%M>"
+# This ensures we're semver-compatible which OpenShift wants
+automatic-version-suffix: "-"
+# Keep this is sync with the version in postprocess
+mutate-os-release: "4.11"
+
+postprocess:
+  - |
+     #!/usr/bin/env bash
+     set -xeo pipefail
+
+     # Tweak /usr/lib/os-release
+     grep -v "OSTREE_VERSION" /etc/os-release > /usr/lib/os-release.rhel
+     OCP_RELEASE="4.11"
+     (
+     . /etc/os-release
+     cat > /usr/lib/os-release <<EOF
+     NAME="${NAME} CoreOS"
+     ID="rhcos"
+     ID_LIKE="rhel fedora"
+     VERSION="${OSTREE_VERSION}"
+     VERSION_ID="${OCP_RELEASE}"
+     PLATFORM_ID="${PLATFORM_ID}"
+     PRETTY_NAME="${NAME} CoreOS ${OSTREE_VERSION} (Ootpa)"
+     ANSI_COLOR="${ANSI_COLOR}"
+     CPE_NAME="cpe:/o:redhat:enterprise_linux:8::coreos"
+     HOME_URL="${HOME_URL}"
+     DOCUMENTATION_URL="https://docs.openshift.com/container-platform/${OCP_RELEASE}/"
+     BUG_REPORT_URL="https://bugzilla.redhat.com/"
+     REDHAT_BUGZILLA_PRODUCT="OpenShift Container Platform"
+     REDHAT_BUGZILLA_PRODUCT_VERSION="${OCP_RELEASE}"
+     REDHAT_SUPPORT_PRODUCT="OpenShift Container Platform"
+     REDHAT_SUPPORT_PRODUCT_VERSION="${OCP_RELEASE}"
+     OPENSHIFT_VERSION="${OCP_RELEASE}"
+     RHEL_VERSION="${VERSION_ID}"
+     OSTREE_VERSION="${OSTREE_VERSION}"
+     EOF
+     )
+
+     # Tweak /etc/system-release, /etc/system-release-cpe & /etc/redhat-release
+     (
+     . /etc/os-release
+     cat > /etc/system-release-cpe <<EOF
+     ${CPE_NAME}
+     EOF
+     cat > /usr/lib/redhat-release <<EOF
+     ${NAME} release ${VERSION_ID}
+     EOF
+     rm -f /etc/system-release /etc/redhat-release
+     ln -s /usr/lib/system-release /etc/system-release
+     ln -s /usr/lib/system-release /etc/redhat-release
+     )
+
+     # Tweak /usr/lib/issue
+     cat > /usr/lib/issue <<EOF
+     \S \S{VERSION_ID}
+     EOF
+     rm -f /etc/issue /etc/issue.net
+     ln -s /usr/lib/issue /etc/issue
+     ln -s /usr/lib/issue /etc/issue.net
+
+     # Let's have a non-boring motd, just like CL (although theirs is more subdued
+     # nowadays compared to early versions with ASCII art).  One thing we do here
+     # is add --- as a "separator"; the idea is that any "dynamic" information should
+     # be below that.
+     # See: https://projects.engineering.redhat.com/browse/COREOS-1029
+     . /etc/os-release
+     cat > /etc/motd <<EOF
+     Red Hat Enterprise Linux CoreOS $VERSION
+       Part of OpenShift ${OPENSHIFT_VERSION}, RHCOS is a Kubernetes native operating system
+       managed by the Machine Config Operator (\`clusteroperator/machine-config\`).
+
+     WARNING: Direct SSH access to machines is not recommended; instead,
+     make configuration changes via \`machineconfig\` objects:
+       https://docs.openshift.com/container-platform/${OPENSHIFT_VERSION}/architecture/architecture-rhcos.html
+
+     ---
+     EOF
+  # Collection of C9S specific workarounds
+  - |
+     #!/usr/bin/env bash
+     set -xeo pipefail
+
+     # FIXME: Force enable dbus-broker to get the dbus.service → dbus-broker.service
+     systemctl enable dbus-broker
+
+     # FIXME: Why is this only broken here?  NM isn't removing the link?
+     sed -i '/etc.resolv/d' /usr/lib/tmpfiles.d/etc.conf
+
+     # crio should stop hardcoding things in their config file!
+     # We are apparently somehow pulling in a conmon override in RHCOS
+     # that contains /usr/libexec/crio/conmon - WHY?
+     # sed -i '/conmon.*=/d' /etc/crio/crio.conf
+     # Oh right but the MCO overrides that too so...
+     mkdir -p /usr/libexec/crio
+     ln -sr /usr/bin/conmon /usr/libexec/crio/conmon
+
+     # Use crun by default
+     sed -i '/\[crio.runtime\]/a default_runtime="crun"' /etc/crio/crio.conf
+     cat >> /etc/crio/crio.conf <<EOF
+     [crio.runtime.runtimes.crun]
+     runtime_path="/usr/bin/crun"
+     EOF
+
+# Packages that are only in SCOS and not in RHCOS or that have special
+# constraints that do not apply to RHCOS
+packages:
+ # We include the generic release package and tweak the os-release info in a
+ # post-proces script
+ - centos-release
+ # RHCOS package name includes a version number
+ - openvswitch
+
+# Packages pinned to specific repos in SCOS
+#repo-packages:
+#  - repo: rhel-85-baseos
+#    packages:
+#      - sssd
+#  # we always want the kernel from BaseOS
+#  - repo: rhel-8-baseos
+#    packages:
+#      - kernel
+#  # we want the one shipping in RHEL, not the equivalently versioned one in RHAOS
+#  - repo: rhel-8-appstream
+#    packages:
+#      - nss-altfiles
+#  - repo: rhel-8-server-ose
+#    packages:
+#      # eventually, we want the one from the container-tools module, but we're
+#      # not there yet
+#      - toolbox
+#      # These are the only container stack packages we don't get from modularity
+#      # nor from base RHEL for various reasons. See:
+#      # https://github.com/openshift/os/pull/681#issuecomment-1022443830
+#      #
+#      # newer than what is included in RHEL 8.4.Z EUS, but addresses some BZs
+#      # that customers were encountering
+#      - container-selinux
+#      # newer than what is included in RHEL 8.4.Z EUS, because the k8s folks
+#      # wanted to start testing with 1.x versions of crun
+#      - crun
+#      # slightly newer than what is included in RHEL 8.4.Z EUS, because we had
+#      # previously shipped a newer version in OCP/RHCOS 4.9 and had to preserve
+#      # the upgrade path
+#      - runc
+#      # Need an updated skopeo for https://github.com/containers/skopeo/pull/1476
+#      # for coreos layering work
+#      - containers-common
+#      - skopeo
+
+# modules:
+#   enable:
+#     # podman stack; see https://github.com/openshift/os/pull/681#issuecomment-1022443830
+#     - container-tools:rhel8
+#     # qemu-guest-agent
+#     - virt:rhel

@@ -1,0 +1,10 @@
+rojig:
+  license: MIT
+  name: scos
+  summary: OKD 4
+
+variables:
+  distro: "scos"
+
+include:
+  - ../common.yaml
