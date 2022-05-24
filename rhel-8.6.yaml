@@ -2,6 +2,7 @@
 ostree-layers:
   # Temporary logrotate service and timer units
   - overlay/15rhcos-logrotate
+  - overlay/25rhcos-azure-udev
 
 # See README.md
 # and https://github.com/openshift/release/blob/master/core-services/release-controller/README.md#rpm-mirrors

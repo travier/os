@@ -41,8 +41,20 @@ https://listengine.tuxfamily.org/chrony.tuxfamily.org/chrony-dev/2020/05/msg0002
 25rhcos-azure-udev-rules
 ------------------------
 
+RHEL 8.5 only
+
 Ships udev rules for Azure. This works in tandem with the
 `25coreos-azure-udev` dracut module in 05core which ships
 them in the initramfs. In the future, we should be able to
 drop this overlay and instead ship `WALinuxAgent-udev` as we
 do in FCOS (https://bugzilla.redhat.com/show_bug.cgi?id=1913074).
+
+25rhcos-azure-udev
+-------------
+
+RHEL 8.6 only
+
+We want to provide Azure udev rules as part of the initrd, so that Ignition is
+able to detect disks and act on them. The WALinuxAgent-udev has been changed to
+install udev rules into the initramfs, but that change isn't in el8 yet. This
+can be dropped when moving to el9.
