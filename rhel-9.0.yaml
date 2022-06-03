@@ -6,6 +6,8 @@
 repos:
   - rhel-9-baseos
   - rhel-9-appstream
+  # Temporary for openvswitch-selinux-extra-policy
+  - rhel-8-fast-datapath
   - rhel-9-fast-datapath
   - rhel-9-server-ose
 
