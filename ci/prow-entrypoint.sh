@@ -6,6 +6,9 @@ set -xeuo pipefail
 # Global variables
 REDIRECTOR_URL="https://rhcos-redirector.apps.art.xq1c.p1.openshiftapps.com/art/storage/releases/"
 
+# Default version of RHEL used to build RHCOS
+RHELVER="rhel-8.6"
+
 # This function is used to update the /etc/passwd file within the COSA container
 # at test-time. The need for this comes from the fact that OpenShift will run a
 # container with a randomized user ID by default to enhance security. Because
@@ -39,27 +42,26 @@ cosa_init() {
     cd "$cosa_dir"
 
     # Setup source tree
-    cosa init --transient "${tmp_src}/os"
+    cosa init --transient "${tmp_src}/os" "${RHELVER}"
 }
 
 # Do a cosa build & cosa build-extensions only
 # This is called both as part of the build phase and test phase in Prow thus we
 # can not do any kola testing in this function.
 cosa_build() {
-    # Grab the raw value of `mutate-os-release` and use sed to convert the value
-    # to X-Y format
-    ocpver=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]')
-    ocpver_mut=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]' | sed 's|\.|-|')
-    prev_build_url=${REDIRECTOR_URL}/rhcos-${ocpver}/
-    # Fetch the previous build
-    cosa buildfetch --url="${prev_build_url}"
+    if [[ "${RHELVER}" != "c9s" ]]; then
+        # Grab the raw value of `mutate-os-release` and use sed to convert the value
+        # to X-Y format
+        ocpver=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]')
+        ocpver_mut=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["mutate-os-release"]' | sed 's|\.|-|')
+        prev_build_url=${REDIRECTOR_URL}/rhcos-${ocpver}/
+        # Fetch the previous build
+        cosa buildfetch --url="${prev_build_url}"
 
-    # Fetch the repos corresponding to the release we are building
-    rhelver=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["automatic-version-prefix"]' | cut -f2 -d.)
-    id
-    whoami
-    ls -alh "src/config/"
-    curl -L "http://base-${ocpver_mut}-rhel${rhelver}.ocp.svc.cluster.local" -o "src/config/ocp.repo"
+        # Fetch the repos corresponding to the release we are building
+        rhelver=$(rpm-ostree compose tree --print-only src/config/manifest.yaml | jq -r '.["automatic-version-prefix"]' | cut -f2 -d.)
+        curl -L "http://base-${ocpver_mut}-rhel${rhelver}.ocp.svc.cluster.local" -o "src/config/ocp.repo"
+    fi
 
     # Build RHCOS & extensions
     cosa fetch
@@ -68,10 +70,6 @@ cosa_build() {
 }
 
 # Make sure the image is at least booting before runnning expensive tests
-kola_test_basic() {
-    cosa kola run basic
-}
-
 kola_test_basic_scenarios() {
     cosa kola --basic-qemu-scenarios
 }
@@ -154,32 +152,62 @@ main () {
             cosa_init
             cosa_build
             ;;
-        "build-test-qemu-kola-basic")
+        "rhcos-86-build-test")
+            RHELVER="rhel-8.6"
             setup_user
             cosa_init
             cosa_build
-            kola_test_basic
             kola_test_basic_scenarios
-            ;;
-        "build-test-qemu-kola-all")
-            setup_user
-            cosa_init
-            cosa_build
-            kola_test_basic
-            kola_test_run
-            ;;
-        "build-test-qemu-kola-upgrade")
-            setup_user
-            cosa_init
-            cosa_build
-            kola_test_basic
             kola_test_upgrade
+            kola_test_run
+            kola_test_metal
             ;;
-        "build-test-qemu-kola-metal")
+        "rhcos-86-build-test-metal")
+            RHELVER="rhel-8.6"
             setup_user
             cosa_init
             cosa_build
-            kola_test_basic
+            kola_test_basic_scenarios
+            kola_test_metal
+            ;;
+        "rhcos-90-build-test")
+            RHELVER="rhel-9.0"
+            setup_user
+            cosa_init
+            cosa_build
+            kola_test_basic_scenarios
+            kola_test_upgrade
+            kola_test_run
+            kola_test_metal
+            ;;
+        "rhcos-90-build-test-metal")
+            RHELVER="rhel-9.0"
+            setup_user
+            cosa_init
+            cosa_build
+            kola_test_basic_scenarios
+            kola_test_upgrade
+            kola_test_run
+            kola_test_metal
+            ;;
+        "scos-9-build-test")
+            RHELVER="c9s"
+            setup_user
+            cosa_init
+            cosa_build
+            kola_test_basic_scenarios
+            kola_test_upgrade
+            kola_test_run
+            kola_test_metal
+            ;;
+        "scos-9-build-test-metal")
+            RHELVER="c9s"
+            setup_user
+            cosa_init
+            cosa_build
+            kola_test_basic_scenarios
+            kola_test_upgrade
+            kola_test_run
             kola_test_metal
             ;;
         *)
