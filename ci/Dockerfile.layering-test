@@ -1,6 +1,13 @@
 # Create a slimmer Fedora-based image for the layering test binary. This is
 # intended to make the startup of the OS layering test faster since we
 # won't have to pull the larger build-test-qemu-img.
-FROM build-test-qemu-img:latest AS base
+FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.17-openshift-4.10 AS builder
+WORKDIR /go/src/github.com/openshift/os
+COPY . .
+# Prevent go mod from requiring a vendor directory.
+ENV GOFLAGS=-mod=mod
+# Compile our layering test binary for future use.
+RUN go test -v -c -o layering_test ./tests/layering
+
 FROM registry.ci.openshift.org/coreos/fedora:35 AS final
-COPY --from=base /usr/local/bin/layering_test /usr/local/bin/layering_test
+COPY --from=builder /go/src/github.com/openshift/os/layering_test /usr/local/bin/layering_test
