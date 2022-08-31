@@ -2,26 +2,28 @@
 
 ## Background
 
-RHEL CoreOS (RHCOS) is a derivative of both RHEL and Fedora CoreOS (FCOS). The
-tool to build both RHCOS and FCOS is [coreos-assembler]. The process detailled
-here is thus very similar to the one described in [Building Fedora CoreOS].
+RHEL CoreOS (RHCOS) is a derivative of Red Hat Enterprise Linux (RHEL), CentOS
+Strema CoreOS (SCOS) and Fedora CoreOS (FCOS). The tool to build RHCOS, SCOS
+and FCOS is [coreos-assembler]. The process detailled here is thus very similar
+to the one described in [Building Fedora CoreOS] or [Building and developing
+CentOS Stream CoreOS](development-scos.md) but requires access to Red Hat
+internal resources.
 
 ## Build process
 
-This build process is very similar to the one used for [CentOS Stream
-CoreOS](development-scos.md) but requires access to Red Hat internal resources.
-
-Note that this applies only to RHCOS versions starting with 4.9 and later. For
-older versions, see the internal documentation.
+Note that this documentation applies only to RHCOS versions starting with 4.9
+and later. For older versions, see the internal documentation.
 
 - Make sure you're meeting the [prerequisites].
+
 - Setup a `cosa` alias, following the [upstream documentation][cosa-alias].
+
 - Always make sure that you are using the *latest build* of the specific
   version of the COSA container matching with the version of RHCOS that you
   want to build:
   ```
   # Use the latest version for the main developement branch:
-  # The export command is optional here as it is the default
+  # The export command below is optional here as it is the default
   $ export COREOS_ASSEMBLER_CONTAINER=quay.io/coreos-assembler/coreos-assembler:latest
   $ podman pull quay.io/coreos-assembler/coreos-assembler
 
@@ -29,13 +31,24 @@ older versions, see the internal documentation.
   $ export COREOS_ASSEMBLER_CONTAINER=quay.io/coreos-assembler/coreos-assembler:rhcos-4.10
   $ podman pull quay.io/coreos-assembler/coreos-assembler:rhcos-4.10
   ```
+
 - Create and use a dedicated directory:
   ```
   $ mkdir rhcos
   $ cd rhcos
   ```
   If you're going to work on multiple versions of RHCOS, using a dedicated
-  directory for each version is recommended (i.e.  `rhcos-4.11`).
+  directory for each version is recommended:
+  ```
+  $ mkdir rhcos-4.11
+  $ cd rhcos-4.11
+  ```
+
+- Get the following values from the internal documentation:
+  ```
+  RH_CA="..."
+  RHCOS_REPO=""
+  ```
 
 - **For 4.12 and later only:** Clone the config repo (`openshift/os`), passing
   as argument the internal Git repo which includes the RPM repo configs and

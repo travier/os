@@ -10,21 +10,25 @@ Fedora CoreOS].
 ## Build process
 
 - Make sure you're meeting the [prerequisites].
+
 - Setup a `cosa` alias, following the [upstream documentation][cosa-alias].
+
 - Always make sure that you have the latest version of the COSA container:
   ```
   $ podman pull quay.io/coreos-assembler/coreos-assembler
   ```
+
 - Create and use a dedicated directory:
   ```
   $ mkdir scos
   $ cd scos
   ```
+
 - Clone the config repo (`openshift/os`):
   ```
   $ cosa init --variant scos https://github.com/openshift/os.git
   ```
-  ```
+
 - **Temporary workaround until we have full repos for SCOS:** Add the internal
   `rhel-9-server-ose` repo definition from RHCOS to `rhcos9.repo`:
   ```
@@ -33,6 +37,7 @@ Fedora CoreOS].
   gpgcheck=0
   baseurl=http://...
   ```
+
 - Fetch packages and build SCOS ostree container and QEMU image:
   ```
   $ cosa fetch
