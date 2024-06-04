@@ -368,10 +368,16 @@ main() {
             kola_test_metal
             ;;
         "scos-10-build-test-qemu")
-            exit 0
+            setup_user
+            cosa_init "okd-c10s"
+            cosa_build
+            kola_test_qemu
             ;;
         "scos-10-build-test-metal")
-            exit 0
+            setup_user
+            cosa_init "okd-c10s"
+            cosa_build
+            kola_test_metal
             ;;
         *)
             # This case ensures that we exhaustively list the tests that should
